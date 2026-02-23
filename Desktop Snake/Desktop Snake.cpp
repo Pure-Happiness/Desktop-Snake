@@ -106,6 +106,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   pt.x = SCREEN.x / screen.x, pt.y = SCREEN.y / screen.y;
   constexpr POINT dir[]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
   const POINT DIR[]{{pt.x, 0}, {0, pt.y}, {-pt.x, 0}, {0, -pt.y}};
+  constexpr int vKey[] = {VK_RIGHT, VK_DOWN, VK_LEFT, VK_UP},
+                vKey2[] = {'D', 'S', 'A', 'W'};
   struct Unit {
     LONG x, y, X, Y;
     int index;
@@ -135,7 +137,15 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     };
     set_food();
     while (true) {
-      Sleep(256);
+      for (int i{}; i < 16; ++i) {
+        Sleep(16);
+        for (int i{}; i < 4; ++i)
+          if (GetAsyncKeyState(vKey[i]) < 0 || GetAsyncKeyState(vKey2[i]) < 0) {
+            if (i != banned)
+              d = i;
+            break;
+          }
+      }
       banned = d ^ 2;
       Unit old_tail = body.back();
       for (auto it = body.rbegin(), nit = next(it); nit != body.rend();
