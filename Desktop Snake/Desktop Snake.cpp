@@ -1,4 +1,4 @@
-﻿#include "resource.h"
+﻿#include "Resource.h"
 #include "targetver.h"
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
@@ -51,7 +51,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     if (GetLastError() == ERROR_ALREADY_EXISTS)
       return 0;
   }
-  CoInitialize(nullptr);
+  assert(SUCCEEDED(CoInitialize(nullptr)));
   IShellWindows *psw;
   assert(SUCCEEDED(CoCreateInstance(CLSID_ShellWindows, nullptr, CLSCTX_ALL,
                                     IID_PPV_ARGS(&psw))));
