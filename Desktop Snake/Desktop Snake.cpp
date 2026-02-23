@@ -1,5 +1,4 @@
-﻿#pragma warning(disable : 4700)
-#include "Resource.h"
+﻿#include "resource.h"
 #include "targetver.h"
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
@@ -7,6 +6,9 @@
 #include <ShlObj.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <cstdlib>
 #include <ctime>
@@ -36,6 +38,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
       return 0;
   }
   assert(SUCCEEDED(CoInitialize(nullptr)));
+  IShellDispatch4 *psd;
+  assert(SUCCEEDED(CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_SERVER,
+                                    IID_PPV_ARGS(&psd))));
+  assert(SUCCEEDED(psd->ToggleDesktop()));
   IShellWindows *psw;
   assert(SUCCEEDED(CoCreateInstance(CLSID_ShellWindows, nullptr, CLSCTX_ALL,
                                     IID_PPV_ARGS(&psw))));
@@ -61,8 +67,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     MessageBox(nullptr, message, nullptr, MB_OK);
     return 0;
   }
-  if (cItems < 10 && DialogBox(nullptr, MAKEINTRESOURCE(IDD_FEWICONS), nullptr,
-                               DialogProc) == IDCANCEL)
+  if (cItems < 10 && DialogBox(hInstance, MAKEINTRESOURCE(IDD_FEWICONS),
+                               nullptr, DialogProc) == IDCANCEL)
     return 0;
   DWORD dwFlags;
   assert(SUCCEEDED(pfv->GetCurrentFolderFlags(&dwFlags)));
@@ -164,7 +170,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
         }
       break;
     }
-    if (DialogBox(nullptr, MAKEINTRESOURCE(IDD_GAMEOVER), nullptr,
+    if (DialogBox(hInstance, MAKEINTRESOURCE(IDD_GAMEOVER), nullptr,
                   DialogProc) == IDCANCEL)
       break;
   }
