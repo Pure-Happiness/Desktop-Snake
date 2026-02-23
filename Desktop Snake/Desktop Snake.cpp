@@ -1,4 +1,5 @@
-﻿#include "Resource.h"
+﻿#pragma warning(disable : 4700)
+#include "Resource.h"
 #include "targetver.h"
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
@@ -6,14 +7,12 @@
 #include <ShlObj.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <atomic>
 #include <cassert>
 #include <cstdlib>
+#include <ctime>
 #include <optional>
 #include <queue>
 #include <vector>
-
-static std::atomic_char dialog_result;
 
 static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT message, WPARAM wParam,
                                    LPARAM) {
@@ -21,27 +20,12 @@ static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT message, WPARAM wParam,
   case WM_INITDIALOG:
     return (INT_PTR)TRUE;
   case WM_COMMAND:
-    switch (LOWORD(wParam)) {
-    case IDOK:
-      dialog_result = 'T';
-      goto notify;
-    case IDCANCEL:
-      dialog_result = 'F';
-      goto notify;
+    if (auto lwParam = LOWORD(wParam); lwParam == IDOK || lwParam == IDCANCEL) {
+      assert(EndDialog(hDlg, lwParam));
+      return (INT_PTR)TRUE;
     }
   }
   return (INT_PTR)FALSE;
-notify:
-  dialog_result.notify_one();
-  EndDialog(hDlg, LOWORD(wParam));
-  return (INT_PTR)TRUE;
-}
-
-static bool WaitDialog(LPCWSTR lpTemplate) {
-  dialog_result = 'N';
-  DialogBox(nullptr, lpTemplate, nullptr, DialogProc);
-  dialog_result.wait('N');
-  return dialog_result == 'T';
 }
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
@@ -77,7 +61,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     MessageBox(nullptr, message, nullptr, MB_OK);
     return 0;
   }
-  if (cItems < 10 && !WaitDialog(MAKEINTRESOURCE(IDD_FEWICONS)))
+  if (cItems < 10 && DialogBox(nullptr, MAKEINTRESOURCE(IDD_FEWICONS), nullptr,
+                               DialogProc) == IDCANCEL)
     return 0;
   DWORD dwFlags;
   assert(SUCCEEDED(pfv->GetCurrentFolderFlags(&dwFlags)));
@@ -100,9 +85,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   RECT rect;
   assert(GetClientRect(hWnd, &rect));
   const UINT dpi = GetDpiForWindow(hWnd);
-  const POINT SCREEN{.x = rect.right * (LONG)dpi / 96,
-                     .y = rect.bottom * (LONG)dpi / 96},
-      screen{.x = SCREEN.x / pt.x, .y = SCREEN.y / pt.y};
+  const POINT SCREEN{rect.right * (LONG)dpi / 96, rect.bottom * (LONG)dpi / 96},
+      screen{SCREEN.x / pt.x, SCREEN.y / pt.y};
   pt.x = SCREEN.x / screen.x, pt.y = SCREEN.y / screen.y;
   constexpr POINT dir[]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
   const POINT DIR[]{{pt.x, 0}, {0, pt.y}, {-pt.x, 0}, {0, -pt.y}};
@@ -131,7 +115,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
           x = std::rand() % screen.x, y = std::rand() % screen.y;
         LONG X = x * pt.x, Y = y * pt.y;
         nFood = {x, y, X, Y, nIndex};
-        sIcon(nIndex++, {.x = X, .y = Y});
+        sIcon(nIndex++, {X, Y});
       } else
         nFood = std::nullopt;
     };
@@ -146,25 +130,26 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
             break;
           }
       }
+      assert(SUCCEEDED(pfv->SetRedraw(FALSE)));
       banned = d ^ 2;
-      Unit old_tail = body.back();
+      Unit tail = body.back();
       for (auto it = body.rbegin(), nit = next(it); nit != body.rend();
            it = nit++) {
         it->x = nit->x, it->y = nit->y;
-        sIcon(it->index, {.x = it->X = nit->X, .y = it->Y = nit->Y});
+        sIcon(it->index, {it->X = nit->X, it->Y = nit->Y});
       }
       if (!food.empty()) {
         auto &f = food.front();
-        if (old_tail.x == f.x && old_tail.y == f.y) {
+        if (tail.x == f.x && tail.y == f.y) {
           body.push_back(f);
           food.pop();
           goto no_remove_end;
         }
       }
-      oc[old_tail.x][old_tail.y] = false;
+      oc[tail.x][tail.y] = false;
     no_remove_end:
       Unit &head = body.front();
-      sIcon(head.index, {.x = head.X += DIR[d].x, .y = head.Y += DIR[d].y});
+      sIcon(head.index, {head.X += DIR[d].x, head.Y += DIR[d].y});
       if ((head.x += dir[d].x) >= 0 && head.x < screen.x &&
           (head.y += dir[d].y) >= 0 && head.y < screen.y)
         if (auto cell = oc[head.x][head.y]; !cell) {
@@ -174,16 +159,17 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
               food.push(*nFood);
               set_food();
             }
-          pfv->SetRedraw(TRUE);
+          assert(SUCCEEDED(pfv->SetRedraw(TRUE)));
           continue;
         }
       break;
     }
-    if (!WaitDialog(MAKEINTRESOURCE(IDD_GAMEOVER)))
+    if (DialogBox(nullptr, MAKEINTRESOURCE(IDD_GAMEOVER), nullptr,
+                  DialogProc) == IDCANCEL)
       break;
   }
   for (int i{}; i < cItems; ++i)
     sIcon(i, apt[i]);
-  pfv->SetCurrentFolderFlags(requiredFlags, dwFlags);
+  assert(SUCCEEDED(pfv->SetCurrentFolderFlags(requiredFlags, dwFlags)));
   return 0;
 }
