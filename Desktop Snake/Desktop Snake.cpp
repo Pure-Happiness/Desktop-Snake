@@ -86,7 +86,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   POINT pt;
   assert(SUCCEEDED(pfv->GetSpacing(&pt)));
   PITEMID_CHILD *const apidl = new PITEMID_CHILD[cItems];
-  auto set_icon = [pfv, apidl](int i, POINT p) {
+  auto sIcon = [pfv, apidl](int i, POINT p) {
     assert(SUCCEEDED(pfv->SelectAndPositionItems(1, (LPCITEMIDLIST *)apidl + i,
                                                  &p, SVSI_POSITIONITEM)));
   };
@@ -100,8 +100,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   RECT rect;
   assert(GetClientRect(hWnd, &rect));
   const UINT dpi = GetDpiForWindow(hWnd);
-  const POINT screen{.x = rect.right * (LONG)dpi / 96 / pt.x,
-                     .y = rect.bottom * (LONG)dpi / 96 / pt.y};
+  const POINT SCREEN{.x = rect.right * (LONG)dpi / 96,
+                     .y = rect.bottom * (LONG)dpi / 96},
+      screen{.x = SCREEN.x / pt.x, .y = SCREEN.y / pt.y};
+  pt.x = SCREEN.x / screen.x, pt.y = SCREEN.y / screen.y;
   constexpr POINT dir[]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
   const POINT DIR[]{{pt.x, 0}, {0, pt.y}, {-pt.x, 0}, {0, -pt.y}};
   struct Unit {
@@ -111,37 +113,35 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   std::srand(std::time(nullptr));
   while (true) {
     for (int i = 1; i < cItems; ++i)
-      set_icon(i, {-pt.x, -pt.y});
-    set_icon(0, {});
+      sIcon(i, {-pt.x, -pt.y});
+    sIcon(0, {});
     std::size_t d = 0, banned = 2;
     std::vector<Unit> body{Unit{}};
     std::queue<Unit> food;
-    std::vector<std::vector<bool>> occupied(screen.x,
-                                            std::vector<bool>(screen.y));
-    occupied[0][0] = true;
-    int next_index = 1;
-    std::optional<Unit> next_food;
-    auto set_food = [&occupied, &next_index, &next_food, &set_icon, cItems, pt,
-                     screen] {
-      if (next_index < cItems) {
+    std::vector<std::vector<bool>> oc(screen.x, std::vector<bool>(screen.y));
+    oc[0][0] = true;
+    int nIndex = 1;
+    std::optional<Unit> nFood;
+    auto set_food = [&oc, &nIndex, &nFood, &sIcon, cItems, pt, screen] {
+      if (nIndex < cItems) {
         LONG x = std::rand() % screen.x, y = std::rand() % screen.y;
-        while (occupied[x][y])
+        while (oc[x][y])
           x = std::rand() % screen.x, y = std::rand() % screen.y;
         LONG X = x * pt.x, Y = y * pt.y;
-        next_food = {x, y, X, Y, next_index};
-        set_icon(next_index++, {.x = X, .y = Y});
+        nFood = {x, y, X, Y, nIndex};
+        sIcon(nIndex++, {.x = X, .y = Y});
       } else
-        next_food = std::nullopt;
+        nFood = std::nullopt;
     };
     set_food();
     while (true) {
-      Sleep(1000); // For debug. Decrease the time interval later.
+      Sleep(256);
       banned = d ^ 2;
       Unit old_tail = body.back();
       for (auto it = body.rbegin(), nit = next(it); nit != body.rend();
            it = nit++) {
         it->x = nit->x, it->y = nit->y;
-        set_icon(it->index, {.x = it->X = nit->X, .y = it->Y = nit->Y});
+        sIcon(it->index, {.x = it->X = nit->X, .y = it->Y = nit->Y});
       }
       if (!food.empty()) {
         auto &f = food.front();
@@ -151,20 +151,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
           goto no_remove_end;
         }
       }
-      occupied[old_tail.x][old_tail.y] = false;
+      oc[old_tail.x][old_tail.y] = false;
     no_remove_end:
       Unit &head = body.front();
+      sIcon(head.index, {.x = head.X += DIR[d].x, .y = head.Y += DIR[d].y});
       if ((head.x += dir[d].x) >= 0 && head.x < screen.x &&
           (head.y += dir[d].y) >= 0 && head.y < screen.y)
-        if (auto cell = occupied[head.x][head.y]; !cell) {
+        if (auto cell = oc[head.x][head.y]; !cell) {
           cell = true;
-          set_icon(head.index,
-                   {.x = head.X += DIR[d].x, .y = head.Y += DIR[d].y});
-          if (next_food)
-            if (auto &nf = *next_food; head.x == nf.x && head.y == nf.y) {
-              food.push(*next_food);
+          if (nFood)
+            if (auto &nf = *nFood; head.x == nf.x && head.y == nf.y) {
+              food.push(*nFood);
               set_food();
             }
+          pfv->SetRedraw(TRUE);
           continue;
         }
       break;
@@ -173,7 +173,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
       break;
   }
   for (int i{}; i < cItems; ++i)
-    set_icon(i, apt[i]);
+    sIcon(i, apt[i]);
   pfv->SetCurrentFolderFlags(requiredFlags, dwFlags);
   return 0;
 }
