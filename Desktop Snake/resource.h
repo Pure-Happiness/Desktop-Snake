@@ -4,7 +4,7 @@
 //
 #define IDD_GAMEOVER                    103
 #define IDD_FEWICONS                    104
-#define IDS_NO_ICON                     103
+#define IDD_NOICON                      105
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
