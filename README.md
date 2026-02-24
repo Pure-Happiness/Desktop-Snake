@@ -5,3 +5,5 @@
 让你的桌面图标动起来，一起玩贪吃蛇游戏吧！无需担心桌面被搞乱——游戏结束时，所有图标自动复位，桌面属性恢复原样。
 
 零安装、单文件、超便携，随时随地双击即玩！
+
+*注意：需要[Microsoft Visual C++ 可再发行程序包](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist#latest-supported-redistributable-version)*
