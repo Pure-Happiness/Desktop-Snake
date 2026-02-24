@@ -94,8 +94,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   assert(GetClientRect(hWnd, &rect));
   const UINT dpi = GetDpiForWindow(hWnd);
   const POINT SCREEN{rect.right * (LONG)dpi / 96, rect.bottom * (LONG)dpi / 96},
-      screen{SCREEN.x / pt.x, SCREEN.y / pt.y},
-      base{apt->x % pt.x, apt->y % pt.y};
+      screen{SCREEN.x / pt.x, SCREEN.y / pt.y};
+  pt.x = SCREEN.x / screen.x, pt.y = SCREEN.y / screen.y;
   constexpr POINT dir[]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
   const POINT DIR[]{{pt.x, 0}, {0, pt.y}, {-pt.x, 0}, {0, -pt.y}};
   constexpr int vKey[] = {VK_RIGHT, VK_DOWN, VK_LEFT, VK_UP};
@@ -107,20 +107,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
   while (true) {
     for (int i = 1; i < cItems; ++i)
       sIcon(i, {-pt.x, -pt.y});
-    sIcon(0, base);
+    sIcon(0, {});
     std::size_t d = 0, banned = 2;
-    std::vector<Unit> body{{{}, base, 0}};
+    std::vector<Unit> body{Unit{}};
     std::queue<Unit> food;
     std::vector<std::vector<bool>> oc(screen.x, std::vector<bool>(screen.y));
     oc[0][0] = true;
     int nIndex = 1;
     std::optional<Unit> nFood;
-    auto set_food = [&oc, &nIndex, &nFood, &sIcon, cItems, pt, screen, base] {
+    auto set_food = [&oc, &nIndex, &nFood, &sIcon, cItems, pt, screen] {
       if (nIndex < cItems) {
         POINT logic{std::rand() % screen.x, std::rand() % screen.y};
         while (oc[logic.x][logic.y])
           logic.x = std::rand() % screen.x, logic.y = std::rand() % screen.y;
-        POINT physic{logic.x * pt.x + base.x, logic.y * pt.y + base.y};
+        POINT physic{logic.x * pt.x, logic.y * pt.y};
         nFood = {logic, physic, nIndex};
         sIcon(nIndex++, physic);
       } else
@@ -128,8 +128,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
     };
     set_food();
     while (true) {
-      for (int i{}; i < 15; ++i) {
-        Sleep(6);
+      for (int i{}; i < 8; ++i) {
+        Sleep(12);
         for (int i{}; i < 4; ++i)
           if (GetAsyncKeyState(vKey[i]) < 0) {
             if (i != banned)
