@@ -2,7 +2,6 @@
 #include "targetver.h"
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
-#include <ExDisp.h>
 #include <ShlObj.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
